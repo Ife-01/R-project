@@ -1,0 +1,239 @@
+---
+title: "Best selling books (2009-2019)"
+author: "Ife O"
+date: "2024-09-27"
+output: html_document
+---
+
+```{r}
+library("readr")
+library("dplyr")
+library("tidyr")
+library("ggplot2")
+library("reshape2")
+library("here")
+library("scales")
+library("here")
+```
+
+```{r}
+#Loading in the data 
+books <- read.csv(here("bestsellers_with_categories.csv"), header = TRUE)
+                   
+```
+
+```{r}
+#Checking data structure and quality
+str(books)
+
+print(head(books))
+
+print(tail(books))
+
+#I noticed from the tail that some books with the exact same names are released in different year. I will assume that they are duplicated values and select only books with unique names
+
+#Checking if there are missing data 
+sum(is.na(books))
+
+#Checking for duplicate data
+dupe_books <- sum(duplicated(books))
+#This means no exact duplicated data minus the duplicated names
+
+#Checking column names 
+colnames(books)
+```
+
+```{r}
+#Cleaning data 
+
+#Checking for books with repeated book names
+books_duplicate <- books %>%
+  group_by(Name) %>%
+  summarise(count= n()) %>%
+  filter(count > 1)
+
+print(books_duplicate)
+
+#Reconfirming the duplicated books name
+duplicated_books <- books[duplicated(books$Name), ]
+```
+
+
+```{r}
+#Selecting only books that the names are not duplicated
+books_bestseller <- books[!duplicated(books$Name), ]
+```
+
+```{r}
+#Number of books per genre 
+
+books_per_genre <-  books_bestseller %>%
+    count (Genre)
+
+head(books_per_genre)
+
+plt_book_genre <- ggplot(books_per_genre, aes(x= Genre, y = n))+
+  geom_col(fill= "cyan4")
+  labs(title = "Number of books per genre", x = "Book Genre", y = "Number of books")
+
+plt_book_genre
+```
+```{r}
+#Top 10 most expensive books 
+
+most_expensive_books <- books_bestseller %>%
+                   arrange(desc(Price))  %>%
+                   head(10)
+
+
+print(most_expensive_books)
+```
+
+```{r}
+#Top 10 Cheapest book 
+
+cheapest_books <-  books_bestseller %>%
+                   arrange((Price)) %>%
+                   head(10)
+
+print(cheapest_books)
+```
+
+```{r}
+#Top 10 Authors based  on high ratings(more than 1) 
+
+highly_rated_authors <- books_bestseller %>%
+  arrange(desc(User.Rating))  %>%
+  count(Author) %>%
+  filter(n > 1) %>%
+  arrange(desc(n)) %>%
+  head(10)
+
+print(highly_rated_authors)
+  
+```
+
+
+
+```{r}
+#Bestselling books and their User Rating 
+books_per_rating <-  books %>%
+    count (User.Rating)
+
+plt_books_per_rating <- ggplot(books_per_rating , aes(x= User.Rating, y = n))+
+  geom_col(fill = "darkgreen")+
+    labs(title = "User Ratings of BestSelling books", x = "User Ratings", y= "Number of books")
+    
+    
+plt_books_per_rating
+```
+
+```{r}
+# Average rating of book genre?
+avg_genre_book_rating <- books_bestseller %>%
+  group_by(Genre) %>%
+  summarise(average = mean(User.Rating))
+
+print(avg_genre_book_rating)
+```
+
+
+```{r}
+#Year with the highest no of best selling books and which genre was popular
+
+books_per_year <- books_bestseller %>%
+  group_by(Year, Genre) %>%
+  summarise(number_of_books = n())
+
+#Make a plot of the year, color by fiction or non fiction 
+ plt_books_per_year <-  ggplot(books_per_year, aes(x= factor(Year), y = number_of_books, fill = Genre))+
+    geom_col(position = "dodge")+
+   labs(title = "BestSelling books per year", x = "Year", y= "Number of books")
+ 
+ plt_books_per_year
+```
+
+```{r}
+#Book reviews per year
+
+
+plt_book_reviews_per_year <- ggplot(books_bestseller, aes(x = factor(Year), y = Reviews)) +
+  geom_bar(stat = "identity", fill = "steelblue", color =NA) +
+  labs(title = "Total Number of Reviews per Year",
+       x = "Year", y = "Total Reviews") +
+  scale_y_continuous(labels = comma) 
+   
+  
+
+
+
+plt_book_reviews_per_year 
+```
+
+
+
+```{r}
+#Books with the most reviews
+most_reviewed_books <- books_bestseller %>%
+  arrange(desc(Reviews)) %>%
+  head(10)
+
+#Plot of most reviewed books 
+plt_most_reviewed_books <-  ggplot(most_reviewed_books, aes(x= reorder(Name, Reviews), y= Reviews))+
+  geom_bar(stat = "identity", fill = 'royalblue')+
+  coord_flip()+
+   scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.1)))+
+#If reviews want to be added to chart
+#+geom_text(aes(label = times_captured), hjust = +1.5, colour = "black")
+    labs(title = "Top 10 Reviewed books", x= "Book Title", y = "Number of Reviews")
+  
+ 
+
+plt_most_reviewed_books
+```
+
+
+
+
+
+
+
+
+```{r}
+#correlation betwen price and rating
+plt_price_vs_rating <- ggplot(books_bestseller, aes(x = Price, y = User.Rating)) +
+  geom_point(aes(color = Genre), size = 3) 
+  labs(title = "Price vs. User Rating",
+       x = "Price ($)", y = "User Rating") +
+  theme_minimal()
+
+plt_price_vs_rating
+```
+
+```{r}
+#Correlation between review and rating
+plt_review_vs_rating <- ggplot(books_bestseller, aes(x = Reviews, y = User.Rating)) +
+  geom_point(aes(color = Genre), size = 3) +
+  labs(title = "Review vs. User Rating",
+       x = "Price ($)", y = "User Rating") +
+  theme_minimal()
+
+plt_review_vs_rating
+```
+
+
+```{r}
+#Correlation between price and review 
+
+plt_price_vs_review <- ggplot(books_bestseller, aes(x = Price, y = Reviews)) +
+  geom_point(aes(color = Genre), size = 3) +
+  labs(title = "Price vs. Review",
+       x = "Price ($)", y = "User Rating") +
+  theme_minimal()
+
+
+plt_price_vs_review
+```
+
+
+
